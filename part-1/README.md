@@ -24,3 +24,18 @@ In fact, many websites are static but the view rendered by the browser can be up
 - Company landing pages
 - Personal Portfolio Site
 - Any site can be written as a static site! (with supporting API, of course)
+  
+  
+## Architecture
+
+### Traditional Server Model
+
+We will first consider the case using a traditional website hosted by a single server, then by multiple servers behind a load balancer. For cost analysis, we will be looking at AWS EC2 prices.
+  
+(insert diagram w/o load balancer)
+
+For the case of a single server, the cheapest possible EC2 instance we can use is the t4g.nano instance ($0.0042 per hour => ~$3.00 a month). There are also data transfer costs out of AWS, so depending on the amount of traffic, you may need to account for the $0.09 per GB transferred out of EC2. This would essentially amount to the size of the files you vend out multiplied by the number of website visitors. For more info on EC2 pricing, see the [AWS EC2 On-Demand Pricing page](https://aws.amazon.com/ec2/pricing/on-demand/)
+  
+(instert diagram w/ load balancer)
+  
+For the case with the load balancer, our new cost is the cost of the load balancer plus the hourly cost of the EC2 instance type multiplied by the number of hosts. The data transfer cost is still the same, just split across hosts. The load balancer cost is $16.20 per month for hourly rate and an additional cost relative to the amount of traffic and size of data being passed. For smaller applications, users probably would not incur significant costs for # of connnections and amount of data transferred. You can see more about Load Balancer pricing on the [AWS ELB Pricing page](https://aws.amazon.com/elasticloadbalancing/pricing/)
