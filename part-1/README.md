@@ -89,8 +89,88 @@ The traditional server model is suited well for consistent, predictable high-loa
 For this tutorial, you will need to make your own AWS account. To complete the entire tutorial, you will be required to purchase a domain name, however completing the tutorial is optional.
   
 ### 1 Creating an S3 Bucket
+  1. Navigate to the AWS S3 Console
+  1. Press "Create Bucket"
+     - General Configuration: choose whatever name and region you would like.
+     - "Block Public Access settings for this bucket": uncheck all the boxes.
+     - Go ahead and finish creating the bucket, no need to change any additional settings now.
+  1. Navigate to your bucket by clicking the link.
+  ![bucket](https://user-images.githubusercontent.com/23093022/174226155-9e439a78-9635-4943-9946-00394d17c344.PNG)
+  1. Add the HTML/CSS files from this repository to the bucket (`index.html`, `other.html`, and `other.css`).
 ### 2 Making the S3 Bucket into a static site
-### 3 Point your domain at the S3 Bucket using Route53 (optional - Domain Name Required)
-### 4 Create a certificate with ACM (optional - Domain Name Required)
-### 5 Create a Cloudfront CDN mapping to the S3 Bucket (optional - Domain Name Required)
-### 6 Create a DNS record mapping your Domain to Cloudfront Distribution (optional - Domain Name Required)
+  1. Navigate to your bucket, and go to the "Properties" tab. Scroll to the bottom towards static website settings.
+     - Enable static web settings and change the root and error document to `index.html`. This will make the default page `index.html`, and when the user tries to navigate to a non-existent page, it will take them to `index.html`.
+  ![enable-static-website](https://user-images.githubusercontent.com/23093022/174226196-d52282a2-fe0e-48dc-bd36-c0299ba9c826.PNG)
+
+  1. Go to the "Permissions" Tab.
+     - Edit the bucket policy and change it to the following (except replace with your bucket name):
+  ```
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicReadGetObject",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::static-site-tutorial/*"
+        }
+    ]
+}
+  ```
+  1. Go back to the Properties tab, get the static website domain, and enjoy your S3 Static Site!!
+  
+### 3 Create a certificate with ACM (optional - Domain Name Required)
+  1. Navigate to the ACM Console and change your region in the upper right corner to `us-east-1`. This is important as CloudFront will only consume ACM certificates in NA with this region
+  ![ACM-us-east-1](https://user-images.githubusercontent.com/23093022/174226128-67e67c13-5d96-4712-9cf5-53e5425f4b53.PNG)
+  1. Request a certificate, make it public, and use DNS verification.
+     - If you have a domain name (example: laboe.org), then you can put that as the fully qualified domain name field. You can also use a sub domain, such as `static.john.laboe.org`. 
+  1. Navigate to the certificate you created to check it's status:
+     - Under the "Domains" section, press "Create Records in Route53." This will automatically create new CNAME records which ACM can use to verify that you own the domain.
+  
+### 4 Create a Cloudfront CDN mapping to the S3 Bucket (optional - Domain Name Required)
+  1. Navigate to the Cloudfront console
+  1. Create a new distribution:
+     - In the first section
+        - Choose the origin domain corresponding to your S3 bucket.
+        - Leave the origin path blank.
+        - You may change the name or leave it the same.
+        - Enable using OAI to access the S3 Bucket and create a new OAI. Also allow Cloudfront to update the Bucket Policy. This will effectively undo the permissions to access the S3 bucket directly and only allow users to access through Cloudfront.
+        - Keep the rest of the settings the same.
+  ![cloudfront-first-section](https://user-images.githubusercontent.com/23093022/174226050-f00b1be0-942f-46d3-881e-098e9c02a45f.PNG)
+     - Under the "Default Cache Behavior" section.
+        - Make sure HTTP is redirected to HTTPS.
+     - Under the "Settings Section"
+        - You may choose to change the price class. I usually choose to use only North America and Europe.
+        - Add Alternate Domain Names: use the same name as you used for your ACM certificate.
+        - Select the SSL certificate: it should be the one you created with ACM.
+  ![cloudfront-settings](https://user-images.githubusercontent.com/23093022/174226084-6d817f0f-129e-4473-abd6-0f98e35b21e5.PNG)
+
+     - Create the Distribution.
+  1. Go to the "Error Pages" Tab
+     - "Create Custom Error Response"
+     - For the HTTP error code, choose 404.
+     - Use a custom error response, and choose the page path to be `index.html`. This way, if the user tries to enter a bad page, they're redirected to index.html.
+     - Select the HTTP response code to be 200. It will not render the page if the response code isn't success.
+  ![cloudfront-error-response](https://user-images.githubusercontent.com/23093022/174225767-0aee5744-2cbc-47ae-8e95-18733c452861.PNG)
+  
+### 5 Create a Route 53 DNS record mapping your Domain to Cloudfront Distribution (optional - Domain Name Required)
+  
+  1. Navigate to the Route53 Console and go to "Hosted Zones". Find the Hosted Zone for your domain name and navigate to it.
+  1. Create a new Record. 
+     - Set the subdomain to whatever you chose for your ACM (`static.john` for me).
+     - Make it an alias.
+     - Select the CloudFront endpoint.
+  
+![route53-records](https://user-images.githubusercontent.com/23093022/174226672-b1a1ecc9-dc48-4e80-a9e8-6ab918df5a48.PNG)
+  
+  
+### 6 Disable Public Access to S3
+  We need to finish by only allowing CloudFront to access our S3 bucket.
+   
+  1. Navigate to the S3 Console. Navigate to your bucket.
+  1. Go to the permissions tab:
+     - Under "Block Public Access", re-enable (re-check) all the boxes.
+     - Under "Bucket Policy", you should see two statements: (1) for public access and the other (2) for CloudFront OAI access. You should delete the first one.
+  
+Now we are finished. Type your Domain name into your web browser and check out your site. See mine at https://static.john.laboe.org 
